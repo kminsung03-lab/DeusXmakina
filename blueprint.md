@@ -30,8 +30,16 @@ An interactive, high-fidelity world map application featuring two distinct, larg
 3.  **Camera Controls:** [DONE] Integrated `MapControls` for intuitive navigation.
 4.  **UI Overlay:** [DONE] Modern CSS-based layout for titles and hints.
 
-## Future Plans
-1.  [ ] Add procedural terrain (mountains, rivers) onto the continents.
-2.  [ ] Implement clickable points of interest (Cities, Ruins).
-3.  [ ] Add animated water shaders for the ocean.
-4.  [ ] Introduce a "Day/Night" cycle.
+## Action Plan (Current: Detailing)
+1.  [ ] **Aetheria (West) Detailing:**
+    - [ ] Create "Silver Peak" mountain range (Snow-capped 3D peaks).
+    - [ ] Add "Whispering Woods" (Forest clusters).
+    - [ ] Add "Azure River" flow.
+2.  [ ] **Umbra (East) Detailing:**
+    - [ ] Create "Obsidian Crags" (Sharp, dark rock formations).
+    - [ ] Add "Ember Desert" (Warm, sandy dunes).
+    - [ ] Add "Misty Swamps" (Low-lying dark green patches).
+3.  [ ] **Atmosphere & Polish:**
+    - [ ] Add animated "Cloud Layer" above the map.
+    - [ ] Implement animated wave shaders for the ocean.
+    - [ ] Add interactive city markers.
