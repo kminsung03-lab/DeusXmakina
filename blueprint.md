@@ -1,31 +1,41 @@
-# Project: DeusXmakina - The Twin Continents Map
+# Project: DeusXmakina - 100x100 Fantasy World Engine
 
 ## Overview
-A dynamic, high-fidelity fantasy world simulation. Two continents, Aetheria and Umbra, are home to numerous factions (Kingdoms, Empires, Tribes) that evolve, expand, and clash based on a procedural simulation engine. The player acts as a "Watcher," observing the world and spending accumulated points to intervene in the course of history.
+A complex, data-driven fantasy simulation set on a 100x100 grid map with two major continents. The world is populated by factions (Kingdoms, Empires, Tribes) and races (Humans, Elves, Orcs, Dwarfs, Nomads) that interact through expansion, war, and diplomacy.
 
-## Core Systems
-1.  **Faction Simulation:**
-    - **Expansion:** Factions grow their territory randomly over time.
-    - **Conflict:** Overlapping borders trigger Wars, Diplomacy, or Trade events.
-    - **Factions:** Diverse types (Empires: high power, Kingdoms: balanced, Tribes: rapid expansion).
-2.  **Player Economy (The Watcher's Influence):**
-    - **Point Generation:** 1 Point earned every 10 seconds of active browsing.
-    - **Intervention:** Spend points to:
-        - *Bless:* Boost a faction's expansion/defense.
-        - *Curse:* Weaken a faction or trigger internal strife.
-        - *Peace:* Force an end to a war.
-3.  **Visual Feedback:**
-    - Dynamic "Territory Glow" showing faction borders.
-    - Event Log (News Feed) showing the history of the world.
-    - Floating icons for active wars or major diplomatic breakthroughs.
+## Architecture & Data Model
+### Domain Entities
+- **Map (Grid):** 100x100 Tiles. Each Tile contains terrain, continent ID, owner ID, city ID, and resources.
+- **Continents:** Two major landmasses, each comprising at least 25% of the total tiles.
+- **Factions:** Entities with treasury, military power, tech level, and diplomatic relations.
+- **Player (Watcher):** Earns Influence Points (1 per tick) to intervene in the world.
 
-## Technical Plan
-1.  **World Manager:** [In Progress] A JavaScript class to handle the simulation tick, faction logic, and point accumulation.
-2.  **UI Overhaul:** [In Progress] Add a dashboard for the player's points and a scrolling event log.
-3.  **Interaction Layer:** [Planned] Raycasting to select factions and open an "Intervention Menu."
+### System Modules
+- **Map Generator:** Procedural continent and terrain generation.
+- **Simulation Engine:** Tick-based loop handling Faction AI, Resource growth, and Combat.
+- **Event System:** Triggers natural disasters and political events based on world state.
+- **Intervention API:** Handles player actions (Bless, Curse, Intervene).
+- **Renderer:** Three.js-based 100x100 grid visualization with territory overlays.
+
+## Implementation Details
+### Terrain Distribution
+- Plains (40%), Forest (20%), Mountains (12%), Desert (8%), Swamp (5%), Water (15%).
+
+### Faction AI (Behavior Tree)
+1. **Survival:** Prioritize food/resources if low.
+2. **Stability:** Manage internal unrest.
+3. **Growth:** Invest in tech and infrastructure.
+4. **Expansion:** Military conquest of adjacent tiles.
+
+### Player Interventions
+- **Information (1 Pt):** Reveal hidden faction stats.
+- **Support (5 Pts):** Grant resources.
+- **Sabotage (8 Pts):** Increase rebellion chance.
+- **Mediation (12 Pts):** Force diplomatic improvement.
+- **Grand Intervention (25 Pts):** Direct combat bonus or disaster mitigation.
 
 ## Current Action Plan
-1.  [ ] Create `SimulationEngine.js` to manage factions and world events.
-2.  [ ] Update `index.html` with the "Watcher Dashboard" and "Chronicle" (Event Log).
-3.  [ ] Implement territory visualization on the 3D map.
-4.  [ ] Add the point accumulation and intervention logic.
+1. [ ] Implement `CoreEngine.js` for data structures and simulation loop.
+2. [ ] Refactor `main.js` to handle the 100x100 grid rendering.
+3. [ ] Update UI with detailed faction stats and resource inventory.
+4. [ ] Implement the procedural continent generator (Step 1).
