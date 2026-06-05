@@ -147,9 +147,74 @@ export class SimulationManager {
             this.updateCities(f);
             this.updateTradeRoutes(f);
             this.processAI(f);
+
+            // Handle Dilemmas
+            if (this.state.tickCount - f.lastDilemmaTick > 50 && f.activeDilemmas.length < 3) {
+                this.generateDilemma(f);
+                f.lastDilemmaTick = this.state.tickCount;
+            }
         });
 
         this.processGlobalEvents();
+    }
+
+    generateDilemma(f) {
+        const dilemmaPool = [
+            {
+                id: 'food_shortage',
+                title: "식량 위기",
+                text: `${f.name}의 농작물이 병충해로 인해 위협받고 있습니다. 민중들이 굶주림에 허덕이기 시작했습니다.`,
+                options: [
+                    { text: "천상의 축복 (에센스 -5)", effect: { food: 200, stability: 10, points: -5 }, history: "감시자의 축복으로 기근을 극복하고 풍요의 시대를 맞이했습니다." },
+                    { text: "자연의 섭리 (안정도 -20)", effect: { stability: -20, points: 2 }, history: "감시자는 고난을 방관했고, 수많은 이들이 굶주림 속에 스러져갔습니다." }
+                ]
+            },
+            {
+                id: 'tech_breakthrough',
+                title: "기술적 영감",
+                text: "한 학자가 별의 움직임에서 새로운 기계 장치의 원리를 깨달았습니다. 이를 실현하려면 막대한 자원이 필요합니다.",
+                options: [
+                    { text: "지식의 전수 (재정 -100)", effect: { tech: 0.2, treasury: -100, points: 3 }, history: "국고를 쏟아부어 기술 혁명을 이룩했습니다. 문명이 한 단계 도약합니다." },
+                    { text: "무시 (기술 -0.1)", effect: { tech: -0.05, points: 1 }, history: "혁신적인 아이디어는 무시되었고, 학계는 침체기에 빠졌습니다." }
+                ]
+            },
+            {
+                id: 'rebellion_rising',
+                title: "민중의 봉기",
+                text: "일부 귀족들의 횡포에 참다못한 농민들이 무기를 들었습니다. 수도가 위태롭습니다.",
+                options: [
+                    { text: "반란 진압 (군사 -20)", effect: { military: -20, stability: 15, points: -2 }, history: "피의 숙청을 통해 질서를 회복했습니다. 공포가 대지를 뒤덮습니다." },
+                    { text: "협상 중재 (재정 -150)", effect: { treasury: -150, stability: 20, points: 5 }, history: "감시자의 중재로 평화적인 합의에 도달했습니다. 백성들은 당신을 찬양합니다." }
+                ]
+            }
+        ];
+
+        const randomDilemma = dilemmaPool[Math.floor(Math.random() * dilemmaPool.length)];
+        f.activeDilemmas.push({ ...randomDilemma, timestamp: this.state.tickCount });
+    }
+
+    resolveDilemma(factionId, dilemmaIndex, choiceIndex) {
+        const f = this.state.factions.find(fac => fac.id === factionId);
+        if (!f) return;
+
+        const dilemma = f.activeDilemmas[dilemmaIndex];
+        const choice = dilemma.options[choiceIndex];
+
+        // Apply effects
+        if (choice.effect.food) f.food += choice.effect.food;
+        if (choice.effect.stability) f.stability += choice.effect.stability;
+        if (choice.effect.military) f.military += choice.effect.military;
+        if (choice.effect.treasury) f.treasury += choice.effect.treasury;
+        if (choice.effect.tech) f.techLevel += choice.effect.tech;
+        
+        this.state.player.influencePoints += choice.effect.points;
+
+        // Record history
+        f.history.push({ year: this.state.tickCount, text: choice.history });
+        
+        // Remove dilemma
+        f.activeDilemmas.splice(dilemmaIndex, 1);
+        return true;
     }
 
     updateResources(f) {

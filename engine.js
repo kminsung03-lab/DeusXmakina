@@ -51,6 +51,9 @@ export class Faction {
         this.territories = new Set();
         this.diplomacy = new Map(); // factionId -> { state: 'neutral|war|ally', trust: int }
         this.tradeRoutes = []; // List of faction IDs traded with
+        this.history = []; // Array of { year, text }
+        this.activeDilemmas = []; // Array of dilemma objects
+        this.lastDilemmaTick = 0;
         this.isAlive = true;
     }
 }

@@ -262,7 +262,7 @@ class WorldRenderer {
         buttons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const action = e.target.getAttribute('data-action');
-                if (this.selectedFactionId !== null) {
+                if (action && this.selectedFactionId !== null) {
                     const result = this.sim.intervene(action, this.selectedFactionId);
                     if (result === true) {
                         this.addEvent(`Watcher intervened in ${this.sim.state.factions[this.selectedFactionId].name} with ${action}.`);
@@ -272,6 +272,87 @@ class WorldRenderer {
                     }
                 }
             });
+        });
+
+        // Faction Page Transitions
+        document.getElementById('btn-open-faction').addEventListener('click', () => {
+            if (this.selectedFactionId !== null) {
+                this.openFactionPage();
+            }
+        });
+
+        document.getElementById('btn-close-faction').addEventListener('click', () => {
+            this.closeFactionPage();
+        });
+    }
+
+    openFactionPage() {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('faction-page').classList.remove('hidden');
+        this.updateFactionPageUI();
+    }
+
+    closeFactionPage() {
+        document.getElementById('faction-page').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+    }
+
+    updateFactionPageUI() {
+        const f = this.sim.state.factions.find(fac => fac.id === this.selectedFactionId);
+        if (!f) return;
+
+        document.getElementById('fp-name').innerText = f.name;
+        document.getElementById('fp-name').style.color = `#${f.color.getHexString()}`;
+        document.getElementById('fp-desc').innerText = `${f.race} | ${f.type}`;
+
+        // Stats
+        const statsGrid = document.getElementById('fp-stats-grid');
+        statsGrid.innerHTML = `
+            <div class="fp-stat-card"><span class="label">군사력</span><span class="value">${Math.floor(f.military)}</span></div>
+            <div class="fp-stat-card"><span class="label">안정도</span><span class="value">${Math.floor(f.stability)}%</span></div>
+            <div class="fp-stat-card"><span class="label">국고</span><span class="value">${Math.floor(f.treasury)}</span></div>
+            <div class="fp-stat-card"><span class="label">기술 수준</span><span class="value">${f.techLevel.toFixed(2)}</span></div>
+            <div class="fp-stat-card"><span class="label">식량</span><span class="value">${Math.floor(f.food)}</span></div>
+            <div class="fp-stat-card"><span class="label">자재</span><span class="value">${Math.floor(f.materials)}</span></div>
+        `;
+
+        // History
+        const historyList = document.getElementById('fp-history-list');
+        historyList.innerHTML = f.history.length > 0 ? '' : '<div class="history-item">아직 기록된 역사가 없습니다.</div>';
+        f.history.slice().reverse().forEach(h => {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.innerHTML = `<b>Year ${h.year}</b> ${h.text}`;
+            historyList.appendChild(item);
+        });
+
+        // Dilemmas
+        const dilemmaList = document.getElementById('fp-dilemma-list');
+        dilemmaList.innerHTML = f.activeDilemmas.length > 0 ? '' : '<div class="dilemma-card"><p>현재 결정할 운명이 없습니다. 세계가 흐르기를 기다리십시오.</p></div>';
+        f.activeDilemmas.forEach((d, dIdx) => {
+            const card = document.createElement('div');
+            card.className = 'dilemma-card';
+            card.innerHTML = `
+                <h3>${d.title}</h3>
+                <p>${d.text}</p>
+                <div class="dilemma-options">
+                    ${d.options.map((opt, oIdx) => `
+                        <button class="dilemma-opt-btn" data-didx="${dIdx}" data-oidx="${oIdx}">
+                            ${opt.text}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            card.querySelectorAll('.dilemma-opt-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const dIdx = parseInt(e.target.getAttribute('data-didx'));
+                    const oIdx = parseInt(e.target.getAttribute('data-oidx'));
+                    if (this.sim.resolveDilemma(f.id, dIdx, oIdx)) {
+                        this.updateFactionPageUI();
+                    }
+                });
+            });
+            dilemmaList.appendChild(card);
         });
     }
 
@@ -328,6 +409,12 @@ class WorldRenderer {
                 this.updateGrid();
                 this.updateFactionUI();
                 this.updateFactionList();
+                
+                // Refresh Faction Page if open
+                if (!document.getElementById('faction-page').classList.contains('hidden')) {
+                    this.updateFactionPageUI();
+                }
+
                 document.getElementById('world-year').innerText = this.sim.state.tickCount;
                 document.getElementById('essence-points').innerText = Math.floor(this.sim.state.player.influencePoints);
             }

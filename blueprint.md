@@ -27,14 +27,18 @@ A complex, data-driven fantasy simulation set on a 100x100 grid map with two maj
 3. **Expansion:** Military conquest or peaceful land grab.
 4. **Development:** Tech upgrades and military training.
 
-## Current Action Plan
-1. [x] Implement `CoreEngine.js` for data structures and simulation loop.
-2. [x] Refactor `main.js` to handle the 100x100 grid rendering.
-3. [x] Update UI with detailed faction stats and resource inventory.
-4. [x] Implement the procedural continent generator (Step 1).
+## Current Action Plan (Phase 3: Faction Destiny)
+1. [ ] **Faction Page:** Implement a full-screen detailed view for individual factions.
+2. [ ] **Historical Impact System:** Track player choices and their effects on faction history.
+3. [ ] **Dilemma System:** Procedurally generate choices (Quest/Decision) that grant or cost Essence Points.
+4. [ ] **Economic Depth:** Add more granular resource management and trade impact.
 
-## Next Goals (Phase 2)
-- [ ] **City System:** Factions can build cities on specific tiles to increase resource production.
-- [ ] **Diplomacy UI:** Add a dedicated panel to see relations between all factions.
-- [ ] **Advanced AI:** Implement trade routes and alliances.
-- [ ] **Visual Polish:** Add particle effects for interventions and combat.
+## Implementation Details (New)
+### Faction Page Layout
+- **State Overview:** Real-time stats with visual progress bars.
+- **The Chronicle:** A list of "Historical Echoes" (Events triggered or influenced by the player).
+- **Watcher's Path:** 3 active choices that refresh periodically.
+
+### Point Economy
+- **Earning:** Helping a faction survive a disaster or making a wise long-term decision.
+- **Spending:** Using power to force an outcome or grant massive bonuses.

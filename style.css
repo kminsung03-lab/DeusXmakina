@@ -302,4 +302,120 @@ body::before {
     font-size: 0.9rem;
     transition: all 0.2s;
 }
-.action-btn:hover { background: var(--accent-color); color: #000; box-shadow: 0 0 15px var(--accent-color); }
+.action-btn.primary { background: var(--accent-color); color: #000; font-weight: bold; }
+
+/* Faction Page - Full Screen Destiny */
+#faction-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #1a1a2e 0%, #05070a 100%);
+    z-index: 200;
+    padding: 60px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    animation: fadeIn 0.8s ease-out;
+}
+
+.faction-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 20px;
+}
+
+.faction-page-header h1 {
+    font-family: var(--font-heading);
+    font-size: 4rem;
+    letter-spacing: 10px;
+    color: var(--gold-color);
+    text-transform: uppercase;
+}
+
+.faction-page-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    flex-grow: 1;
+}
+
+.fp-left, .fp-right { display: flex; flex-direction: column; gap: 30px; }
+
+.fp-stats-section h2, .fp-history-section h2, .fp-dilemma-section h2 {
+    font-size: 1.5rem;
+    color: var(--accent-color);
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+}
+
+#fp-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.fp-stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 4px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.fp-stat-card .label { font-size: 0.8rem; opacity: 0.6; display: block; margin-bottom: 5px; }
+.fp-stat-card .value { font-size: 1.5rem; font-weight: bold; }
+
+#fp-history-list {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+}
+
+.history-item {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.9rem;
+}
+.history-item:last-child { border-bottom: none; }
+.history-item b { color: var(--gold-color); margin-right: 10px; }
+
+#fp-dilemma-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.dilemma-card {
+    background: rgba(76, 201, 240, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 30px;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.dilemma-card:hover { border-color: var(--accent-color); background: rgba(76, 201, 240, 0.1); }
+.dilemma-card h3 { margin-bottom: 15px; color: var(--gold-color); }
+.dilemma-card p { margin-bottom: 25px; line-height: 1.6; opacity: 0.9; }
+
+.dilemma-options { display: flex; gap: 15px; }
+.dilemma-opt-btn {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: #fff;
+    padding: 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    border-radius: 4px;
+}
+.dilemma-opt-btn:hover { background: var(--accent-color); color: #000; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

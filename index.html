@@ -111,6 +111,45 @@
                     <button class="action-btn" data-action="support">Support (5 Pts)</button>
                     <button class="action-btn" data-action="sabotage">Sabotage (8 Pts)</button>
                     <button class="action-btn" data-action="grand">Ascend (25 Pts)</button>
+                    <button id="btn-open-faction" class="action-btn primary">운명 관리</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Faction Page (Full Screen) -->
+        <div id="faction-page" class="hidden">
+            <div class="faction-page-header">
+                <div class="header-left">
+                    <h1 id="fp-name">Faction Name</h1>
+                    <p id="fp-desc">Race | Type</p>
+                </div>
+                <button id="btn-close-faction" class="menu-btn">Orbit으로 복귀</button>
+            </div>
+
+            <div class="faction-page-content">
+                <div class="fp-left">
+                    <section class="fp-stats-section">
+                        <h2>국가 상태</h2>
+                        <div id="fp-stats-grid">
+                            <!-- Stats will be injected here -->
+                        </div>
+                    </section>
+
+                    <section class="fp-history-section">
+                        <h2>세력 연대기 (Chronicle)</h2>
+                        <div id="fp-history-list">
+                            <!-- History items will be injected here -->
+                        </div>
+                    </section>
+                </div>
+
+                <div class="fp-right">
+                    <section class="fp-dilemma-section">
+                        <h2>감시자의 경로 (Watcher's Path)</h2>
+                        <div id="fp-dilemma-list">
+                            <!-- Dilemma cards will be injected here -->
+                        </div>
+                    </section>
                 </div>
             </div>
         </div>
