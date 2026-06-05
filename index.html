@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeusXmakina - Twin Continents</title>
+    <title>DeusXmakina - The Watcher</title>
     <link rel="stylesheet" href="style.css">
     <script type="importmap">
         {
@@ -17,9 +17,40 @@
 <body>
     <div id="app">
         <div id="map-container"></div>
+        
+        <!-- Top Watcher Bar -->
+        <div id="watcher-bar">
+            <div class="stat-item">
+                <span class="label">World Year:</span>
+                <span id="world-year" class="value">1240</span>
+            </div>
+            <div class="stat-item highlight">
+                <span class="label">Essence Points:</span>
+                <span id="essence-points" class="value">0</span>
+            </div>
+        </div>
+
+        <!-- Right Side: The Chronicle -->
+        <div id="chronicle-panel">
+            <h2>The Chronicle</h2>
+            <div id="event-log">
+                <div class="event-item">Welcome, Watcher. The world begins to turn...</div>
+            </div>
+        </div>
+
+        <!-- Bottom: Intervention Menu (Hidden by default) -->
+        <div id="intervention-menu" class="hidden">
+            <h3 id="target-faction-name">Faction Name</h3>
+            <div class="action-buttons">
+                <button class="action-btn" data-action="bless">Bless (10 Pts)</button>
+                <button class="action-btn" data-action="curse">Curse (15 Pts)</button>
+                <button class="action-btn" data-action="instigate">War (25 Pts)</button>
+            </div>
+        </div>
+
         <div id="ui-overlay">
-            <h1>The Twin Continents</h1>
-            <div class="controls-hint">Scroll to Zoom • Drag to Pan</div>
+            <h1>DeusXmakina</h1>
+            <div class="controls-hint">Observe the rise and fall of civilizations.</div>
         </div>
     </div>
     <script type="module" src="main.js"></script>

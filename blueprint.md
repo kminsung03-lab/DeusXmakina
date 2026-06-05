@@ -1,45 +1,31 @@
 # Project: DeusXmakina - The Twin Continents Map
 
 ## Overview
-An interactive, high-fidelity world map application featuring two distinct, large continents. The project focuses on an immersive user experience with smooth zoom/pan controls, vibrant aesthetics, and a premium "living world" feel.
+A dynamic, high-fidelity fantasy world simulation. Two continents, Aetheria and Umbra, are home to numerous factions (Kingdoms, Empires, Tribes) that evolve, expand, and clash based on a procedural simulation engine. The player acts as a "Watcher," observing the world and spending accumulated points to intervene in the course of history.
 
-## Current Status & Features
-- **Map Engine:** Fully implemented using Three.js for 3D/2D hybrid rendering.
-- **Geography:** 
-    - **Aetheria (West):** Lush, organic continent with emerald hues.
-    - **Umbra (East):** Rugged, sharp continent with earthy, mystic tones.
-- **Interactivity:** 
-    - Smooth zoom and pan navigation via MapControls.
-    - Dynamic hover highlighting (Cyan glow) for landmasses.
-- **Aesthetics:** 
-    - Deep indigo ocean with subtle grid scale.
-    - Atmospheric fog and multi-layered lighting (Sun + Rim light).
-    - Modern UI overlay with high-contrast typography.
-
-## Design & Style
-- **Visual Theme:** "Ethereal Cartography" - combining classic parchment textures with modern digital glows and vibrant landmasses.
-- **Typography:** Expressive serif for landmass names, clean sans-serif for UI.
-- **Color Palette:**
-  - Ocean: Deep Indigo to Cyan gradients (`oklch`).
-  - Land: Vibrant Emerald, Earthy Umber, and snowy peaks.
-- **Effects:** Soft depth shadows for continents, subtle noise texture for background, and interactive "glow" on hover/interaction.
+## Core Systems
+1.  **Faction Simulation:**
+    - **Expansion:** Factions grow their territory randomly over time.
+    - **Conflict:** Overlapping borders trigger Wars, Diplomacy, or Trade events.
+    - **Factions:** Diverse types (Empires: high power, Kingdoms: balanced, Tribes: rapid expansion).
+2.  **Player Economy (The Watcher's Influence):**
+    - **Point Generation:** 1 Point earned every 10 seconds of active browsing.
+    - **Intervention:** Spend points to:
+        - *Bless:* Boost a faction's expansion/defense.
+        - *Curse:* Weaken a faction or trigger internal strife.
+        - *Peace:* Force an end to a war.
+3.  **Visual Feedback:**
+    - Dynamic "Territory Glow" showing faction borders.
+    - Event Log (News Feed) showing the history of the world.
+    - Floating icons for active wars or major diplomatic breakthroughs.
 
 ## Technical Plan
-1.  **Core Rendering:** [DONE] Use **Three.js** for the map canvas to allow for high-performance zooming and smooth transitions.
-2.  **Continents Implementation:** [DONE] Designed as extrude meshes with bevels for a "lifted" feel.
-3.  **Camera Controls:** [DONE] Integrated `MapControls` for intuitive navigation.
-4.  **UI Overlay:** [DONE] Modern CSS-based layout for titles and hints.
+1.  **World Manager:** [In Progress] A JavaScript class to handle the simulation tick, faction logic, and point accumulation.
+2.  **UI Overhaul:** [In Progress] Add a dashboard for the player's points and a scrolling event log.
+3.  **Interaction Layer:** [Planned] Raycasting to select factions and open an "Intervention Menu."
 
-## Action Plan (Current: Detailing)
-1.  [ ] **Aetheria (West) Detailing:**
-    - [ ] Create "Silver Peak" mountain range (Snow-capped 3D peaks).
-    - [ ] Add "Whispering Woods" (Forest clusters).
-    - [ ] Add "Azure River" flow.
-2.  [ ] **Umbra (East) Detailing:**
-    - [ ] Create "Obsidian Crags" (Sharp, dark rock formations).
-    - [ ] Add "Ember Desert" (Warm, sandy dunes).
-    - [ ] Add "Misty Swamps" (Low-lying dark green patches).
-3.  [ ] **Atmosphere & Polish:**
-    - [ ] Add animated "Cloud Layer" above the map.
-    - [ ] Implement animated wave shaders for the ocean.
-    - [ ] Add interactive city markers.
+## Current Action Plan
+1.  [ ] Create `SimulationEngine.js` to manage factions and world events.
+2.  [ ] Update `index.html` with the "Watcher Dashboard" and "Chronicle" (Event Log).
+3.  [ ] Implement territory visualization on the 3D map.
+4.  [ ] Add the point accumulation and intervention logic.

@@ -1,18 +1,111 @@
 import * as THREE from 'three';
 import { MapControls } from 'three/addons/controls/MapControls.js';
 
+class WorldSimulation {
+    constructor() {
+        this.factions = [];
+        this.essencePoints = 0;
+        this.worldYear = 1240;
+        this.lastTick = Date.now();
+        
+        this.initUI();
+        this.spawnInitialFactions();
+        this.startLoop();
+    }
+
+    initUI() {
+        this.essenceEl = document.getElementById('essence-points');
+        this.yearEl = document.getElementById('world-year');
+        this.logEl = document.getElementById('event-log');
+    }
+
+    spawnInitialFactions() {
+        const types = ['Empire', 'Kingdom', 'Tribe'];
+        const names = [
+            'Iron Reach', 'Sun Spear', 'Shadow Clan', 'Gold Hearth', 
+            'Frost Bite', 'Storm Guard', 'Emerald Throne', 'Crimson Tide'
+        ];
+
+        for (let i = 0; i < 8; i++) {
+            this.factions.push({
+                id: i,
+                name: names[i],
+                type: types[Math.floor(Math.random() * types.length)],
+                power: 10 + Math.random() * 20,
+                territory: 1,
+                color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5),
+                continent: i < 4 ? 'Aetheria' : 'Umbra',
+                history: []
+            });
+        }
+    }
+
+    addEvent(text) {
+        const div = document.createElement('div');
+        div.className = 'event-item';
+        div.innerText = `[Year ${this.worldYear}] ${text}`;
+        this.logEl.appendChild(div);
+        
+        // Auto-scroll logic if needed
+        if (this.logEl.children.length > 50) this.logEl.removeChild(this.logEl.firstChild);
+    }
+
+    tick() {
+        this.worldYear++;
+        this.yearEl.innerText = this.worldYear;
+
+        // Earn Essence
+        this.essencePoints += 1;
+        this.essenceEl.innerText = this.essencePoints;
+
+        // Faction Growth
+        this.factions.forEach(f => {
+            if (Math.random() > 0.7) {
+                f.territory += Math.random() * 0.5;
+                f.power += Math.random() * 2;
+                if (Math.random() > 0.95) {
+                    this.addEvent(`${f.name} ${f.type} expanded their borders.`);
+                }
+            }
+        });
+
+        // Conflicts
+        if (Math.random() > 0.9) {
+            const f1 = this.factions[Math.floor(Math.random() * this.factions.length)];
+            const f2 = this.factions[Math.floor(Math.random() * this.factions.length)];
+            if (f1.id !== f2.id && f1.continent === f2.continent) {
+                const outcome = Math.random();
+                if (outcome > 0.6) {
+                    this.addEvent(`War broke out between ${f1.name} and ${f2.name}!`);
+                    f1.power -= 5;
+                    f2.power -= 5;
+                } else if (outcome > 0.3) {
+                    this.addEvent(`${f1.name} and ${f2.name} signed a non-aggression pact.`);
+                }
+            }
+        }
+    }
+
+    startLoop() {
+        setInterval(() => this.tick(), 2000); // 1 Tick every 2 seconds
+    }
+}
+
 class WorldMap {
     constructor() {
         this.container = document.getElementById('map-container');
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x0a0c10);
-        this.scene.fog = new THREE.FogExp2(0x0a0c10, 0.0015);
+        this.scene.background = new THREE.Color(0x05070a);
+        this.scene.fog = new THREE.FogExp2(0x05070a, 0.0015);
         
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         this.hoveredObject = null;
         this.continents = [];
         this.clouds = [];
+        this.factionMarkers = [];
+        
+        this.simulation = new WorldSimulation();
         
         this.initCamera();
         this.initRenderer();
@@ -21,16 +114,18 @@ class WorldMap {
         this.createOcean();
         this.createContinents();
         this.createAtmosphere();
+        this.createFactionVisuals();
         
         window.addEventListener('resize', () => this.onWindowResize());
         window.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        window.addEventListener('click', () => this.onClick());
         
         this.animate();
     }
 
     initCamera() {
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
-        this.camera.position.set(0, 250, 150);
+        this.camera.position.set(0, 300, 200);
         this.camera.lookAt(0, 0, 0);
     }
 
@@ -39,188 +134,76 @@ class WorldMap {
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.container.appendChild(this.renderer.domElement);
     }
 
     initLights() {
         this.scene.add(new THREE.AmbientLight(0x404040, 1.5));
-
         const sunLight = new THREE.DirectionalLight(0xffffff, 2.5);
-        sunLight.position.set(200, 300, 100);
+        sunLight.position.set(200, 400, 100);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 4096;
-        sunLight.shadow.mapSize.height = 4096;
-        sunLight.shadow.camera.left = -500;
-        sunLight.shadow.camera.right = 500;
-        sunLight.shadow.camera.top = 500;
-        sunLight.shadow.camera.bottom = -500;
         this.scene.add(sunLight);
-
-        const fillLight = new THREE.PointLight(0x4cc9f0, 1, 1000);
-        fillLight.position.set(-200, 100, -200);
-        this.scene.add(fillLight);
     }
 
     initControls() {
         this.controls = new MapControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
-        this.controls.minDistance = 50;
-        this.controls.maxDistance = 800;
-        this.controls.maxPolarAngle = Math.PI / 2.1;
+        this.controls.minDistance = 100;
+        this.controls.maxDistance = 1000;
     }
 
     createOcean() {
-        const geometry = new THREE.PlaneGeometry(4000, 4000, 100, 100);
-        const material = new THREE.MeshPhongMaterial({
-            color: 0x0a192f,
-            shininess: 90,
-            transparent: true,
-            opacity: 0.9
-        });
-        this.ocean = new THREE.Mesh(geometry, material);
-        this.ocean.rotation.x = -Math.PI / 2;
-        this.ocean.receiveShadow = true;
-        this.scene.add(this.ocean);
-
-        const grid = new THREE.GridHelper(3000, 60, 0x4cc9f0, 0x1a2b3c);
-        grid.position.y = 0.2;
-        grid.material.opacity = 0.1;
-        grid.material.transparent = true;
-        this.scene.add(grid);
+        const geo = new THREE.PlaneGeometry(5000, 5000);
+        const mat = new THREE.MeshPhongMaterial({ color: 0x050a14, shininess: 100 });
+        const ocean = new THREE.Mesh(geo, mat);
+        ocean.rotation.x = -Math.PI / 2;
+        this.scene.add(ocean);
     }
 
     createContinents() {
-        // Aetheria (West)
-        const aetheriaShape = new THREE.Shape();
-        aetheriaShape.moveTo(-150, -100);
-        aetheriaShape.bezierCurveTo(-200, -50, -220, 50, -140, 120);
-        aetheriaShape.bezierCurveTo(-80, 140, -40, 80, -60, 0);
-        aetheriaShape.bezierCurveTo(-50, -80, -110, -120, -150, -100);
-
-        const aetheria = this.addContinentMesh(aetheriaShape, 0x244d3e, { x: -50, y: 0, z: 0 }, "Aetheria");
+        // Simple versions for the simulation base
+        const aetheriaGeo = new THREE.CylinderGeometry(200, 220, 10, 32);
+        const aetheriaMat = new THREE.MeshPhongMaterial({ color: 0x1a3328 });
+        const aetheria = new THREE.Mesh(aetheriaGeo, aetheriaMat);
+        aetheria.position.set(-250, 5, 0);
+        this.scene.add(aetheria);
         this.continents.push(aetheria);
-        this.addMountains(aetheria, 8, 0xffffff); // Silver Peaks
-        this.addForests(aetheria, 15, 0x1b4332); // Whispering Woods
 
-        // Umbra (East)
-        const umbraShape = new THREE.Shape();
-        umbraShape.moveTo(100, -120);
-        umbraShape.lineTo(200, -80);
-        umbraShape.lineTo(220, 30);
-        umbraShape.lineTo(140, 140);
-        umbraShape.lineTo(50, 70);
-        umbraShape.lineTo(30, -50);
-        umbraShape.closePath();
-
-        const umbra = this.addContinentMesh(umbraShape, 0x3d2b1f, { x: 50, y: 0, z: 0 }, "Umbra");
+        const umbraGeo = new THREE.CylinderGeometry(180, 200, 10, 32);
+        const umbraMat = new THREE.MeshPhongMaterial({ color: 0x2d1f14 });
+        const umbra = new THREE.Mesh(umbraGeo, umbraMat);
+        umbra.position.set(250, 5, 0);
+        this.scene.add(umbra);
         this.continents.push(umbra);
-        this.addCrags(umbra, 10, 0x1a1a1a); // Obsidian Crags
-        this.addDesert(umbra, 5, 0xc2a878); // Ember Desert
     }
 
-    addContinentMesh(shape, color, position, name) {
-        const extrudeSettings = { depth: 10, bevelEnabled: true, bevelThickness: 4, bevelSize: 4, bevelSegments: 8 };
-        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-        const material = new THREE.MeshPhongMaterial({ color: color, shininess: 15 });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(position.x, 2, position.z);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.userData = { name: name, baseColor: color, hoverColor: 0x4cc9f0 };
-        this.scene.add(mesh);
-        return mesh;
-    }
-
-    addMountains(parent, count, snowColor) {
-        for (let i = 0; i < count; i++) {
-            const height = 15 + Math.random() * 25;
-            const radius = 5 + Math.random() * 10;
-            const geo = new THREE.ConeGeometry(radius, height, 4);
-            const mat = new THREE.MeshPhongMaterial({ color: 0x4a4a4a, flatShading: true });
-            const mountain = new THREE.Mesh(geo, mat);
+    createFactionVisuals() {
+        this.simulation.factions.forEach(f => {
+            const geo = new THREE.SphereGeometry(10, 16, 16);
+            const mat = new THREE.MeshPhongMaterial({ color: f.color, emissive: f.color, emissiveIntensity: 0.5 });
+            const marker = new THREE.Mesh(geo, mat);
             
-            // Snow cap
-            const capGeo = new THREE.ConeGeometry(radius * 0.4, height * 0.4, 4);
-            const capMat = new THREE.MeshPhongMaterial({ color: snowColor });
-            const cap = new THREE.Mesh(capGeo, capMat);
-            cap.position.y = height * 0.3;
-            mountain.add(cap);
-
-            const pos = this.getRandomPointInMesh(parent);
-            mountain.position.set(pos.x, height/2 + 10, pos.z);
-            mountain.castShadow = true;
-            this.scene.add(mountain);
-        }
-    }
-
-    addCrags(parent, count, color) {
-        for (let i = 0; i < count; i++) {
-            const size = 5 + Math.random() * 15;
-            const geo = new THREE.IcosahedronGeometry(size, 0);
-            const mat = new THREE.MeshPhongMaterial({ color: color, flatShading: true });
-            const crag = new THREE.Mesh(geo, mat);
+            // Random position on their continent
+            const contPos = f.continent === 'Aetheria' ? {x: -250, z: 0} : {x: 250, z: 0};
+            marker.position.set(
+                contPos.x + (Math.random() * 200 - 100),
+                20,
+                contPos.z + (Math.random() * 200 - 100)
+            );
             
-            const pos = this.getRandomPointInMesh(parent);
-            crag.position.set(pos.x, 5, pos.z);
-            crag.scale.set(1, 2 + Math.random() * 2, 1);
-            crag.rotation.set(Math.random(), Math.random(), Math.random());
-            crag.castShadow = true;
-            this.scene.add(crag);
-        }
-    }
-
-    addForests(parent, count, color) {
-        for (let i = 0; i < count; i++) {
-            const group = new THREE.Group();
-            const treeCount = 5 + Math.floor(Math.random() * 10);
-            const basePos = this.getRandomPointInMesh(parent);
-            
-            for (let j = 0; j < treeCount; j++) {
-                const h = 5 + Math.random() * 10;
-                const treeGeo = new THREE.ConeGeometry(2, h, 6);
-                const treeMat = new THREE.MeshPhongMaterial({ color: color });
-                const tree = new THREE.Mesh(treeGeo, treeMat);
-                tree.position.set(Math.random() * 20 - 10, h/2 + 10, Math.random() * 20 - 10);
-                tree.castShadow = true;
-                group.add(tree);
-            }
-            group.position.set(basePos.x, 0, basePos.z);
-            this.scene.add(group);
-        }
-    }
-
-    addDesert(parent, count, color) {
-        for (let i = 0; i < count; i++) {
-            const geo = new THREE.SphereGeometry(20, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-            const mat = new THREE.MeshPhongMaterial({ color: color });
-            const dune = new THREE.Mesh(geo, mat);
-            const pos = this.getRandomPointInMesh(parent);
-            dune.position.set(pos.x, 10, pos.z);
-            dune.scale.set(1, 0.2, 1.5);
-            dune.receiveShadow = true;
-            this.scene.add(dune);
-        }
-    }
-
-    getRandomPointInMesh(mesh) {
-        // Simple bounding box based random for demo, ideally uses shape testing
-        const box = new THREE.Box3().setFromObject(mesh);
-        return {
-            x: box.min.x + Math.random() * (box.max.x - box.min.x),
-            z: box.min.z + Math.random() * (box.max.z - box.min.z)
-        };
+            marker.userData = { faction: f };
+            this.scene.add(marker);
+            this.factionMarkers.push(marker);
+        });
     }
 
     createAtmosphere() {
-        for (let i = 0; i < 20; i++) {
-            const geo = new THREE.SphereGeometry(20 + Math.random() * 30, 16, 16);
-            const mat = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+        for (let i = 0; i < 30; i++) {
+            const geo = new THREE.SphereGeometry(30, 8, 8);
+            const mat = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 });
             const cloud = new THREE.Mesh(geo, mat);
-            cloud.position.set(Math.random() * 1000 - 500, 100 + Math.random() * 50, Math.random() * 1000 - 500);
-            cloud.scale.set(2, 0.5, 1);
+            cloud.position.set(Math.random() * 2000 - 1000, 150, Math.random() * 2000 - 1000);
+            cloud.scale.set(3, 0.5, 2);
             this.scene.add(cloud);
             this.clouds.push(cloud);
         }
@@ -231,23 +214,18 @@ class WorldMap {
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
-    updateHover() {
+    onClick() {
         this.raycaster.setFromCamera(this.mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects(this.continents);
+        const intersects = this.raycaster.intersectObjects(this.factionMarkers);
+        
+        const menu = document.getElementById('intervention-menu');
         if (intersects.length > 0) {
-            const object = intersects[0].object;
-            if (this.hoveredObject !== object) {
-                if (this.hoveredObject) this.hoveredObject.material.color.setHex(this.hoveredObject.userData.baseColor);
-                this.hoveredObject = object;
-                this.hoveredObject.material.color.setHex(this.hoveredObject.userData.hoverColor);
-                document.body.style.cursor = 'pointer';
-            }
+            const faction = intersects[0].object.userData.faction;
+            document.getElementById('target-faction-name').innerText = `${faction.name} ${faction.type}`;
+            menu.classList.remove('hidden');
+            this.selectedFaction = faction;
         } else {
-            if (this.hoveredObject) {
-                this.hoveredObject.material.color.setHex(this.hoveredObject.userData.baseColor);
-                this.hoveredObject = null;
-                document.body.style.cursor = 'default';
-            }
+            menu.classList.add('hidden');
         }
     }
 
@@ -260,18 +238,17 @@ class WorldMap {
     animate() {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
-        this.updateHover();
         
-        // Animate clouds
         this.clouds.forEach(c => {
-            c.position.x += 0.1;
-            if (c.position.x > 600) c.position.x = -600;
+            c.position.x += 0.2;
+            if (c.position.x > 1000) c.position.x = -1000;
         });
 
-        // Simple wave animation
-        if (this.ocean) {
-            this.ocean.material.shininess = 80 + Math.sin(Date.now() * 0.001) * 10;
-        }
+        // Pulse faction markers
+        this.factionMarkers.forEach(m => {
+            const scale = 1 + Math.sin(Date.now() * 0.003) * 0.1;
+            m.scale.set(scale, scale, scale);
+        });
 
         this.renderer.render(this.scene, this.camera);
     }
