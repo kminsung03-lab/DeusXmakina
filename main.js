@@ -19,6 +19,7 @@ class WorldRenderer {
         this.initLights();
         this.initControls();
         this.createGrid();
+        this.updateGrid(); // Initial color update
         this.initUI();
         
         window.addEventListener('resize', () => this.onWindowResize());
@@ -30,7 +31,7 @@ class WorldRenderer {
 
     initCamera() {
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
-        this.camera.position.set(GRID_SIZE / 2, 400, GRID_SIZE * 1.5);
+        this.camera.position.set(GRID_SIZE / 2, 200, GRID_SIZE * 1.2);
         this.camera.lookAt(GRID_SIZE / 2, 0, GRID_SIZE / 2);
     }
 
@@ -48,12 +49,13 @@ class WorldRenderer {
         this.controls = new MapControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.screenSpacePanning = true;
-        this.controls.minDistance = 50;
+        this.controls.minDistance = 20;
         this.controls.maxDistance = 1500;
+        this.controls.target.set(GRID_SIZE / 2, 0, GRID_SIZE / 2);
     }
 
     createGrid() {
-        const geometry = new THREE.PlaneGeometry(1, 1);
+        const geometry = new THREE.PlaneGeometry(0.9, 0.9); // Slightly smaller for grid effect
         const material = new THREE.MeshBasicMaterial({ vertexColors: true });
         this.instancedMesh = new THREE.InstancedMesh(geometry, material, GRID_SIZE * GRID_SIZE);
         
@@ -63,27 +65,34 @@ class WorldRenderer {
         for (let x = 0; x < GRID_SIZE; x++) {
             for (let y = 0; y < GRID_SIZE; y++) {
                 const i = x * GRID_SIZE + y;
-                const tile = this.sim.state.grid[x][y];
                 dummy.position.set(x, 0, y);
                 dummy.rotation.x = -Math.PI / 2;
                 dummy.updateMatrix();
                 this.instancedMesh.setMatrixAt(i, dummy.matrix);
-                const color = new THREE.Color(tile.terrain.color);
-                colors[i * 3] = color.r; colors[i * 3 + 1] = color.g; colors[i * 3 + 2] = color.b;
             }
         }
+        
+        this.instancedMesh.instanceMatrix.needsUpdate = true;
         this.instancedMesh.geometry.setAttribute('color', new THREE.InstancedBufferAttribute(colors, 3));
         this.scene.add(this.instancedMesh);
     }
 
     updateGrid() {
+        if (!this.instancedMesh) return;
         const colors = this.instancedMesh.geometry.attributes.color.array;
         for (let x = 0; x < GRID_SIZE; x++) {
             for (let y = 0; y < GRID_SIZE; y++) {
                 const i = x * GRID_SIZE + y;
                 const tile = this.sim.state.grid[x][y];
-                let color = (tile.ownerId !== null) ? this.sim.state.factions[tile.ownerId].color : new THREE.Color(tile.terrain.color);
-                colors[i * 3] = color.r; colors[i * 3 + 1] = color.g; colors[i * 3 + 2] = color.b;
+                let color;
+                if (tile.ownerId !== null) {
+                    color = this.sim.state.factions[tile.ownerId].color;
+                } else {
+                    color = new THREE.Color(tile.terrain.color);
+                }
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
             }
         }
         this.instancedMesh.geometry.attributes.color.needsUpdate = true;
@@ -99,9 +108,9 @@ class WorldRenderer {
                     if (result === true) {
                         this.addEvent(`Watcher intervened in ${this.sim.state.factions[this.selectedFactionId].name} with ${action}.`);
                     } else if (typeof result === 'object') {
-                        alert(`Information: ${result.name} - Power: ${result.military.toFixed(1)}, Stability: ${result.stability}%`);
+                        alert(`Information: ${result.name}\nPower: ${result.military.toFixed(1)}\nStability: ${result.stability.toFixed(1)}%\nTreasury: ${result.treasury.toFixed(1)} gold`);
                     } else {
-                        alert("Not enough points!");
+                        alert("Not enough points or invalid action.");
                     }
                 }
             });
@@ -110,6 +119,7 @@ class WorldRenderer {
 
     addEvent(text) {
         const log = document.getElementById('event-log');
+        if (!log) return;
         const item = document.createElement('div');
         item.className = 'event-item';
         item.innerText = `[Year ${this.sim.state.tickCount}] ${text}`;
@@ -119,7 +129,7 @@ class WorldRenderer {
 
     onMouseMove(event) {
         this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        this.mouse.y = -(event.innerHeight / window.innerHeight) * 2 + 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
     onClick() {
@@ -155,7 +165,7 @@ class WorldRenderer {
             this.sim.tick();
             this.updateGrid();
             document.getElementById('world-year').innerText = this.sim.state.tickCount;
-            document.getElementById('essence-points').innerText = this.sim.state.player.influencePoints;
+            document.getElementById('essence-points').innerText = Math.floor(this.sim.state.player.influencePoints);
         }, 1000);
     }
 

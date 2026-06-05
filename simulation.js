@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { WorldState, GRID_SIZE, TERRAIN_TYPES, FACTION_TYPES, RACES, Faction } from './engine.js';
 
 export class SimulationManager {
