@@ -13,20 +13,56 @@ class WorldRenderer {
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         this.selectedFactionId = null;
+        this.isGameRunning = false;
 
         this.initCamera();
         this.initRenderer();
         this.initLights();
         this.initControls();
         this.createGrid();
-        this.updateGrid(); // Initial color update
+        this.updateGrid();
         this.initUI();
+        this.initNavigation();
         
         window.addEventListener('resize', () => this.onWindowResize());
         window.addEventListener('mousemove', (e) => this.onMouseMove(e));
         window.addEventListener('click', () => this.onClick());
         
         this.startLoop();
+    }
+
+    initNavigation() {
+        const homeScreen = document.getElementById('home-screen');
+        const gameScreen = document.getElementById('game-screen');
+        
+        document.getElementById('btn-start').addEventListener('click', () => {
+            homeScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            this.isGameRunning = true;
+            this.addEvent("The Watcher has ascended. Time begins now.");
+            this.updateFactionList();
+        });
+
+        document.getElementById('btn-home').addEventListener('click', () => {
+            gameScreen.classList.add('hidden');
+            homeScreen.classList.remove('hidden');
+            this.isGameRunning = false;
+        });
+
+        const loreBtn = document.getElementById('btn-lore');
+        const settingsBtn = document.getElementById('btn-settings');
+        const lorePanel = document.getElementById('lore-content');
+        const settingsPanel = document.getElementById('settings-content');
+
+        loreBtn.addEventListener('click', () => lorePanel.classList.remove('hidden'));
+        settingsBtn.addEventListener('click', () => settingsPanel.classList.remove('hidden'));
+
+        document.querySelectorAll('.close-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                lorePanel.classList.add('hidden');
+                settingsPanel.classList.add('hidden');
+            });
+        });
     }
 
     initCamera() {
@@ -55,7 +91,7 @@ class WorldRenderer {
     }
 
     createGrid() {
-        const geometry = new THREE.PlaneGeometry(0.9, 0.9); // Slightly smaller for grid effect
+        const geometry = new THREE.PlaneGeometry(0.9, 0.9);
         const material = new THREE.MeshBasicMaterial({ vertexColors: true });
         this.instancedMesh = new THREE.InstancedMesh(geometry, material, GRID_SIZE * GRID_SIZE);
         
@@ -98,6 +134,48 @@ class WorldRenderer {
         this.instancedMesh.geometry.attributes.color.needsUpdate = true;
     }
 
+    updateFactionList() {
+        const list = document.getElementById('faction-list');
+        list.innerHTML = '';
+        this.sim.state.factions.forEach(f => {
+            const item = document.createElement('div');
+            item.className = `faction-item ${this.selectedFactionId === f.id ? 'selected' : ''}`;
+            if (!f.isAlive) item.style.opacity = '0.3';
+            
+            item.innerHTML = `
+                <span class="name" style="color: #${f.color.getHexString()}">${f.name}</span>
+                <span class="details">${f.race} ${f.type} | Territory: ${f.territories.size}</span>
+            `;
+            item.addEventListener('click', () => {
+                this.selectedFactionId = f.id;
+                this.updateFactionUI();
+                this.updateFactionList(); // Refresh for selection styling
+            });
+            list.appendChild(item);
+        });
+    }
+
+    updateFactionUI() {
+        if (this.selectedFactionId === null) {
+            document.getElementById('intervention-menu').classList.add('hidden');
+            return;
+        }
+
+        const f = this.sim.state.factions[this.selectedFactionId];
+        document.getElementById('intervention-menu').classList.remove('hidden');
+        document.getElementById('target-faction-name').innerText = f.name;
+        document.getElementById('target-faction-name').style.color = `#${f.color.getHexString()}`;
+        document.getElementById('target-faction-desc').innerText = `${f.race} ${f.type}`;
+        
+        document.getElementById('stat-military').innerText = Math.floor(f.military);
+        document.getElementById('stat-stability').innerText = `${Math.floor(f.stability)}%`;
+        document.getElementById('stat-treasury').innerText = Math.floor(f.treasury);
+        document.getElementById('stat-tech').innerText = f.techLevel.toFixed(2);
+        
+        document.getElementById('res-food').innerText = Math.floor(f.food);
+        document.getElementById('res-materials').innerText = Math.floor(f.materials);
+    }
+
     initUI() {
         const buttons = document.querySelectorAll('.action-btn');
         buttons.forEach(btn => {
@@ -107,10 +185,9 @@ class WorldRenderer {
                     const result = this.sim.intervene(action, this.selectedFactionId);
                     if (result === true) {
                         this.addEvent(`Watcher intervened in ${this.sim.state.factions[this.selectedFactionId].name} with ${action}.`);
-                    } else if (typeof result === 'object') {
-                        alert(`Information: ${result.name}\nPower: ${result.military.toFixed(1)}\nStability: ${result.stability.toFixed(1)}%\nTreasury: ${result.treasury.toFixed(1)} gold`);
+                        this.updateFactionUI();
                     } else {
-                        alert("Not enough points or invalid action.");
+                        alert("Not enough points!");
                     }
                 }
             });
@@ -133,6 +210,7 @@ class WorldRenderer {
     }
 
     onClick() {
+        if (!this.isGameRunning) return;
         this.raycaster.setFromCamera(this.mouse, this.camera);
         const intersects = this.raycaster.intersectObject(this.instancedMesh);
         if (intersects.length > 0) {
@@ -143,12 +221,12 @@ class WorldRenderer {
             
             if (tile.ownerId !== null) {
                 this.selectedFactionId = tile.ownerId;
-                const faction = this.sim.state.factions[tile.ownerId];
-                document.getElementById('target-faction-name').innerText = `${faction.name} (${faction.race} ${faction.type})`;
-                document.getElementById('intervention-menu').classList.remove('hidden');
+                this.updateFactionUI();
+                this.updateFactionList();
             } else {
-                document.getElementById('intervention-menu').classList.add('hidden');
                 this.selectedFactionId = null;
+                this.updateFactionUI();
+                this.updateFactionList();
             }
         }
     }
@@ -156,16 +234,22 @@ class WorldRenderer {
     startLoop() {
         const animate = () => {
             requestAnimationFrame(animate);
-            this.controls.update();
+            if (this.isGameRunning) {
+                this.controls.update();
+            }
             this.renderer.render(this.scene, this.camera);
         };
         animate();
 
         setInterval(() => {
-            this.sim.tick();
-            this.updateGrid();
-            document.getElementById('world-year').innerText = this.sim.state.tickCount;
-            document.getElementById('essence-points').innerText = Math.floor(this.sim.state.player.influencePoints);
+            if (this.isGameRunning) {
+                this.sim.tick();
+                this.updateGrid();
+                this.updateFactionUI();
+                this.updateFactionList();
+                document.getElementById('world-year').innerText = this.sim.state.tickCount;
+                document.getElementById('essence-points').innerText = Math.floor(this.sim.state.player.influencePoints);
+            }
         }, 1000);
     }
 

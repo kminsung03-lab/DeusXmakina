@@ -9,45 +9,103 @@ export class SimulationManager {
     }
 
     generateWorld() {
-        this.fillContinent(25, 50, 1);
-        this.fillContinent(75, 50, 2);
-
+        // Step 1: Initialize with Water
         for (let x = 0; x < GRID_SIZE; x++) {
             for (let y = 0; y < GRID_SIZE; y++) {
-                const tile = this.state.grid[x][y];
-                if (tile.continentId) {
-                    const r = Math.random();
-                    if (r < 0.12) tile.terrain = TERRAIN_TYPES.MOUNTAIN;
-                    else if (r < 0.32) tile.terrain = TERRAIN_TYPES.FOREST;
-                    else if (r < 0.72) tile.terrain = TERRAIN_TYPES.PLAINS;
-                    else if (r < 0.80) tile.terrain = TERRAIN_TYPES.DESERT;
-                    else tile.terrain = TERRAIN_TYPES.SWAMP;
-                    
-                    tile.resources.amount = 5 + Math.random() * 10;
-                    tile.resources.type = tile.terrain.resources[Math.floor(Math.random() * tile.terrain.resources.length)];
+                this.state.grid[x][y].continentId = null;
+                this.state.grid[x][y].terrain = TERRAIN_TYPES.WATER;
+            }
+        }
+
+        // Step 2: Seed continents
+        this.seedLand(3, 0.45); // Create a few landmasses covering ~45% of world
+
+        // Step 3: Cellular Automata smoothing
+        this.smoothLand(3);
+
+        // Step 4: Assign Terrains based on noise-like distribution
+        this.assignTerrains();
+    }
+
+    seedLand(numSeeds, targetRatio) {
+        const targetTiles = GRID_SIZE * GRID_SIZE * targetRatio;
+        let currentTiles = 0;
+
+        for (let i = 0; i < numSeeds; i++) {
+            let rx = Math.floor(Math.random() * (GRID_SIZE - 20)) + 10;
+            let ry = Math.floor(Math.random() * (GRID_SIZE - 20)) + 10;
+            const queue = [[rx, ry]];
+            const continentId = i + 1;
+
+            while (queue.length > 0 && currentTiles < targetTiles / numSeeds * (i + 1)) {
+                const [x, y] = queue.shift();
+                if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
+                if (this.state.grid[x][y].continentId) continue;
+
+                this.state.grid[x][y].continentId = continentId;
+                this.state.grid[x][y].terrain = TERRAIN_TYPES.PLAINS;
+                currentTiles++;
+
+                const neighbors = [[x+1, y], [x-1, y], [x, y+1], [x, y-1]];
+                neighbors.sort(() => Math.random() - 0.5);
+                queue.push(...neighbors);
+                
+                // Add some randomness to growth
+                if (Math.random() > 0.7) queue.push([x + (Math.random() > 0.5 ? 2 : -2), y]);
+            }
+        }
+    }
+
+    smoothLand(iterations) {
+        for (let i = 0; i < iterations; i++) {
+            const newGrid = JSON.parse(JSON.stringify(this.state.grid.map(row => row.map(t => t.continentId))));
+            for (let x = 0; x < GRID_SIZE; x++) {
+                for (let y = 0; y < GRID_SIZE; y++) {
+                    let landNeighbors = 0;
+                    let lastId = null;
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const nx = x + dx, ny = y + dy;
+                            if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                                if (this.state.grid[nx][ny].continentId) {
+                                    landNeighbors++;
+                                    lastId = this.state.grid[nx][ny].continentId;
+                                }
+                            }
+                        }
+                    }
+
+                    if (landNeighbors >= 5) {
+                        this.state.grid[x][y].continentId = lastId;
+                        this.state.grid[x][y].terrain = TERRAIN_TYPES.PLAINS;
+                    } else if (landNeighbors <= 2) {
+                        this.state.grid[x][y].continentId = null;
+                        this.state.grid[x][y].terrain = TERRAIN_TYPES.WATER;
+                    }
                 }
             }
         }
     }
 
-    fillContinent(centerX, centerY, id) {
-        const queue = [[centerX, centerY]];
-        const visited = new Set();
-        let count = 0;
-        const target = (GRID_SIZE * GRID_SIZE) * 0.35;
+    assignTerrains() {
+        for (let x = 0; x < GRID_SIZE; x++) {
+            for (let y = 0; y < GRID_SIZE; y++) {
+                const tile = this.state.grid[x][y];
+                if (!tile.continentId) continue;
 
-        while (queue.length > 0 && count < target) {
-            const [x, y] = queue.shift();
-            const key = `${x},${y}`;
-            if (visited.has(key) || x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
+                // Simple "Blobs" for different terrains using a distance-based noise approximation
+                const noise = Math.sin(x * 0.1) * Math.cos(y * 0.1) + Math.random() * 0.2;
+                
+                if (noise > 0.6) tile.terrain = TERRAIN_TYPES.MOUNTAIN;
+                else if (noise > 0.3) tile.terrain = TERRAIN_TYPES.FOREST;
+                else if (noise < -0.4) tile.terrain = TERRAIN_TYPES.DESERT;
+                else if (noise < -0.2) tile.terrain = TERRAIN_TYPES.SWAMP;
+                else tile.terrain = TERRAIN_TYPES.PLAINS;
 
-            visited.add(key);
-            this.state.grid[x][y].continentId = id;
-            count++;
-
-            const neighbors = [[x+1, y], [x-1, y], [x, y+1], [x, y-1]];
-            neighbors.sort(() => Math.random() - 0.5);
-            queue.push(...neighbors);
+                tile.resources.amount = 10 + Math.random() * 20;
+                tile.resources.type = tile.terrain.resources[Math.floor(Math.random() * tile.terrain.resources.length)];
+            }
         }
     }
 
@@ -58,7 +116,8 @@ export class SimulationManager {
             faction.color = new THREE.Color().setHSL(Math.random(), 0.7, 0.5);
             
             let placed = false;
-            while (!placed) {
+            let attempts = 0;
+            while (!placed && attempts < 100) {
                 const rx = Math.floor(Math.random() * GRID_SIZE);
                 const ry = Math.floor(Math.random() * GRID_SIZE);
                 if (this.state.grid[rx][ry].continentId && !this.state.grid[rx][ry].ownerId) {
@@ -66,14 +125,15 @@ export class SimulationManager {
                     faction.territories.add(`${rx},${ry}`);
                     placed = true;
                 }
+                attempts++;
             }
-            this.state.factions.push(faction);
+            if (placed) this.state.factions.push(faction);
         }
     }
 
     tick() {
         this.state.tickCount++;
-        this.state.player.influencePoints += 1;
+        this.state.player.influencePoints += 0.5; // Slightly slower influence gain
 
         this.state.factions.forEach(f => {
             if (!f.isAlive) return;
@@ -101,52 +161,60 @@ export class SimulationManager {
         f.materials += incomeMaterials;
         f.treasury += incomeGold + (f.territories.size * 0.05);
 
-        // Survival check
         if (f.food < 0) {
             f.food = 0;
-            f.stability -= 5;
-            f.military -= 1;
+            f.stability -= 2;
+            f.military -= 0.5;
+        }
+        
+        // Cap values
+        f.stability = Math.min(100, Math.max(0, f.stability));
+        if (f.stability <= 0 && f.territories.size > 0) {
+            f.isAlive = false;
         }
     }
 
     processAI(f) {
-        // Priority 1: Survival
         if (f.food < 20) {
             this.actionSurvival(f);
             return;
         }
 
-        // Priority 2: Stability
-        if (f.stability < 60) {
+        if (f.stability < 50) {
             this.actionStabilize(f);
             return;
         }
 
-        // Priority 3: Growth & Expansion
         const rand = Math.random();
-        if (rand < 0.4) this.actionExpand(f);
-        else if (rand < 0.7) this.actionDevelop(f);
+        if (rand < 0.45) this.actionExpand(f);
+        else if (rand < 0.75) this.actionDevelop(f);
         else this.actionDiplomacy(f);
     }
 
     actionSurvival(f) {
-        f.treasury -= 10;
-        f.food += 20; // Buying food
+        if (f.treasury >= 10) {
+            f.treasury -= 10;
+            f.food += 20;
+        }
     }
 
     actionStabilize(f) {
-        f.treasury -= 20;
-        f.stability += 15;
+        if (f.treasury >= 20) {
+            f.treasury -= 20;
+            f.stability += 10;
+        }
     }
 
     actionExpand(f) {
-        if (f.military < 20) {
-            f.military += 5;
-            f.materials -= 10;
+        if (f.military < 15 + (f.territories.size * 2)) {
+            f.military += 2;
+            f.materials -= 5;
             return;
         }
 
         const territories = Array.from(f.territories);
+        if (territories.length === 0) return;
+        
         const randomTileKey = territories[Math.floor(Math.random() * territories.length)];
         const [tx, ty] = randomTileKey.split(',').map(Number);
         
@@ -160,7 +228,7 @@ export class SimulationManager {
                         f.territories.add(`${nx},${ny}`);
                         break;
                     } else if (target.ownerId !== f.id) {
-                        this.resolveConflict(f, this.state.factions[target.ownerId], target);
+                        this.resolveConflict(f, this.state.factions.find(fac => fac.id === target.ownerId), target);
                         break;
                     }
                 }
@@ -169,79 +237,76 @@ export class SimulationManager {
     }
 
     actionDevelop(f) {
-        if (f.materials >= 50) {
-            f.materials -= 50;
-            f.techLevel += 0.05;
+        if (f.materials >= 40) {
+            f.materials -= 40;
+            f.techLevel += 0.02;
+            f.military += 1;
         }
     }
 
     actionDiplomacy(f) {
         const target = this.state.factions[Math.floor(Math.random() * this.state.factions.length)];
-        if (target.id !== f.id && target.isAlive) {
-            const trust = (f.diplomacy.get(target.id)?.trust || 0) + 5;
-            f.diplomacy.set(target.id, { state: trust > 50 ? 'ally' : 'neutral', trust });
+        if (target && target.id !== f.id && target.isAlive) {
+            const current = f.diplomacy.get(target.id) || { state: 'neutral', trust: 0 };
+            current.trust += 2;
+            if (current.trust > 60) current.state = 'ally';
+            f.diplomacy.set(target.id, current);
         }
     }
 
     resolveConflict(attacker, defender, tile) {
-        const aPower = attacker.military * (1 + attacker.techLevel * 0.2) * (0.8 + Math.random() * 0.4);
-        const dPower = defender.military * (1 + defender.techLevel * 0.2) * (1.1); // Defender advantage
+        if (!defender) return;
+        const aPower = attacker.military * (1 + attacker.techLevel * 0.1) * (0.7 + Math.random() * 0.6);
+        const dPower = defender.military * (1 + defender.techLevel * 0.1) * (1.2);
         
         if (aPower > dPower) {
             defender.territories.delete(`${tile.x},${tile.y}`);
             attacker.territories.add(`${tile.x},${tile.y}`);
             tile.ownerId = attacker.id;
-            attacker.military -= 3;
-            defender.military -= 5;
-            defender.stability -= 2;
+            attacker.military -= 2;
+            defender.military -= 4;
+            defender.stability -= 5;
+            if (defender.territories.size === 0) defender.isAlive = false;
         } else {
-            attacker.military -= 10;
+            attacker.military -= 8;
+            attacker.stability -= 1;
         }
     }
 
     processGlobalEvents() {
-        if (Math.random() > 0.98) {
+        if (Math.random() > 0.99) {
             const eventType = Math.random();
-            if (eventType > 0.7) {
-                // Drought / Famine
-                this.state.factions.forEach(f => { f.food *= 0.8; f.stability -= 5; });
-            } else if (eventType > 0.4) {
-                // Economic Boom
-                this.state.factions.forEach(f => { f.treasury += 100; });
+            if (eventType > 0.8) {
+                this.state.factions.forEach(f => { f.food *= 0.7; f.stability -= 10; });
+            } else if (eventType > 0.5) {
+                this.state.factions.forEach(f => { f.treasury += 50; f.military += 10; });
             }
         }
     }
 
-    // Player Actions
     intervene(type, targetId) {
-        const f = this.state.factions[targetId];
-        if (!f) return false;
+        const f = this.state.factions.find(fac => fac.id === targetId);
+        if (!f || !f.isAlive) return false;
 
         switch(type) {
-            case 'info': 
-                if (this.state.player.influencePoints >= 1) {
-                    this.state.player.influencePoints -= 1;
-                    return f; 
-                }
-                break;
             case 'support':
                 if (this.state.player.influencePoints >= 5) {
                     this.state.player.influencePoints -= 5;
-                    f.food += 100; f.treasury += 100; f.stability += 10;
+                    f.food += 50; f.treasury += 50; f.stability += 15;
                     return true;
                 }
                 break;
             case 'sabotage':
                 if (this.state.player.influencePoints >= 8) {
                     this.state.player.influencePoints -= 8;
-                    f.stability -= 30;
+                    f.stability -= 25;
                     return true;
                 }
                 break;
             case 'grand':
                 if (this.state.player.influencePoints >= 25) {
                     this.state.player.influencePoints -= 25;
-                    f.military += 100; f.techLevel += 0.5;
+                    f.military += 50; f.techLevel += 0.3; f.stability += 20;
                     return true;
                 }
                 break;

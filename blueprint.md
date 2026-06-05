@@ -6,36 +6,35 @@ A complex, data-driven fantasy simulation set on a 100x100 grid map with two maj
 ## Architecture & Data Model
 ### Domain Entities
 - **Map (Grid):** 100x100 Tiles. Each Tile contains terrain, continent ID, owner ID, city ID, and resources.
-- **Continents:** Two major landmasses, each comprising at least 25% of the total tiles.
+- **Continents:** Multiple procedurally generated landmasses.
 - **Factions:** Entities with treasury, military power, tech level, and diplomatic relations.
-- **Player (Watcher):** Earns Influence Points (1 per tick) to intervene in the world.
+- **Player (Watcher):** Earns Influence Points to intervene in the world.
 
 ### System Modules
-- **Map Generator:** Procedural continent and terrain generation.
+- **Map Generator:** Seed-based growth with Cellular Automata smoothing.
 - **Simulation Engine:** Tick-based loop handling Faction AI, Resource growth, and Combat.
-- **Event System:** Triggers natural disasters and political events based on world state.
-- **Intervention API:** Handles player actions (Bless, Curse, Intervene).
-- **Renderer:** Three.js-based 100x100 grid visualization with territory overlays.
+- **Event System:** Triggers natural disasters and political events.
+- **Intervention API:** Handles player actions (Support, Sabotage, Ascend).
+- **Renderer:** Three.js-based 100x100 grid visualization with InstancedMesh.
 
 ## Implementation Details
 ### Terrain Distribution
-- Plains (40%), Forest (20%), Mountains (12%), Desert (8%), Swamp (5%), Water (15%).
+- Plains, Forest, Mountains, Desert, Swamp, Water.
 
-### Faction AI (Behavior Tree)
-1. **Survival:** Prioritize food/resources if low.
-2. **Stability:** Manage internal unrest.
-3. **Growth:** Invest in tech and infrastructure.
-4. **Expansion:** Military conquest of adjacent tiles.
-
-### Player Interventions
-- **Information (1 Pt):** Reveal hidden faction stats.
-- **Support (5 Pts):** Grant resources.
-- **Sabotage (8 Pts):** Increase rebellion chance.
-- **Mediation (12 Pts):** Force diplomatic improvement.
-- **Grand Intervention (25 Pts):** Direct combat bonus or disaster mitigation.
+### Faction AI (Priority-based)
+1. **Survival:** Buy food if starving.
+2. **Stability:** Invest in stability if low.
+3. **Expansion:** Military conquest or peaceful land grab.
+4. **Development:** Tech upgrades and military training.
 
 ## Current Action Plan
-1. [ ] Implement `CoreEngine.js` for data structures and simulation loop.
-2. [ ] Refactor `main.js` to handle the 100x100 grid rendering.
-3. [ ] Update UI with detailed faction stats and resource inventory.
-4. [ ] Implement the procedural continent generator (Step 1).
+1. [x] Implement `CoreEngine.js` for data structures and simulation loop.
+2. [x] Refactor `main.js` to handle the 100x100 grid rendering.
+3. [x] Update UI with detailed faction stats and resource inventory.
+4. [x] Implement the procedural continent generator (Step 1).
+
+## Next Goals (Phase 2)
+- [ ] **City System:** Factions can build cities on specific tiles to increase resource production.
+- [ ] **Diplomacy UI:** Add a dedicated panel to see relations between all factions.
+- [ ] **Advanced AI:** Implement trade routes and alliances.
+- [ ] **Visual Polish:** Add particle effects for interventions and combat.

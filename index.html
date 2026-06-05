@@ -16,41 +16,103 @@
 </head>
 <body>
     <div id="app">
-        <div id="map-container"></div>
-        
-        <!-- Top Watcher Bar -->
-        <div id="watcher-bar">
-            <div class="stat-item">
-                <span class="label">World Year:</span>
-                <span id="world-year" class="value">1240</span>
+        <!-- Home Screen -->
+        <div id="home-screen" class="overlay-screen">
+            <div class="hero-section">
+                <h1>DEUS X MAKINA</h1>
+                <p class="subtitle">The Eternal Watcher's Chronicle</p>
+                <div class="menu-options">
+                    <button id="btn-start" class="menu-btn primary">Ascend as Watcher</button>
+                    <button id="btn-lore" class="menu-btn">World Lore</button>
+                    <button id="btn-settings" class="menu-btn">Simulation Settings</button>
+                </div>
             </div>
-            <div class="stat-item highlight">
-                <span class="label">Essence Points:</span>
-                <span id="essence-points" class="value">0</span>
+            
+            <!-- Hidden Sections (Modal-like) -->
+            <div id="lore-content" class="info-panel hidden">
+                <button class="close-btn">&times;</button>
+                <h2>World Lore</h2>
+                <p>In the beginning, there were two. Aetheria, the continent of growth, and Umbra, the land of mystic ruggedness.</p>
+                <p>As the Watcher, you exist outside of time, observing the rise and fall of civilizations. Your essence points allow you to nudge history, but the will of the nations is their own.</p>
+            </div>
+
+            <div id="settings-content" class="info-panel hidden">
+                <button class="close-btn">&times;</button>
+                <h2>Settings</h2>
+                <div class="setting-item">
+                    <label>Simulation Speed</label>
+                    <input type="range" id="speed-slider" min="500" max="3000" value="1000" step="500">
+                </div>
+                <div class="setting-item">
+                    <label>Initial Factions</label>
+                    <input type="number" id="faction-count" min="4" max="12" value="8">
+                </div>
             </div>
         </div>
 
-        <!-- Right Side: The Chronicle -->
-        <div id="chronicle-panel">
-            <h2>The Chronicle</h2>
-            <div id="event-log">
-                <div class="event-item">Welcome, Watcher. The world begins to turn...</div>
+        <!-- Game Screen (Hidden by default) -->
+        <div id="game-screen" class="hidden">
+            <div id="map-container"></div>
+            
+            <div id="watcher-bar">
+                <div class="stat-item">
+                    <span class="label">World Year:</span>
+                    <span id="world-year" class="value">0</span>
+                </div>
+                <div class="stat-item highlight">
+                    <span class="label">Essence Points:</span>
+                    <span id="essence-points" class="value">0</span>
+                </div>
+                <button id="btn-home" class="mini-btn">Exit to Orbit</button>
             </div>
-        </div>
 
-        <!-- Bottom: Intervention Menu (Hidden by default) -->
-        <div id="intervention-menu" class="hidden">
-            <h3 id="target-faction-name">Faction Name</h3>
-            <div class="action-buttons">
-                <button class="action-btn" data-action="bless">Bless (10 Pts)</button>
-                <button class="action-btn" data-action="curse">Curse (15 Pts)</button>
-                <button class="action-btn" data-action="instigate">War (25 Pts)</button>
+            <div id="world-stats-panel" class="side-panel left">
+                <h2>Factions</h2>
+                <div id="faction-list">
+                    <!-- Faction items will be injected here -->
+                </div>
             </div>
-        </div>
 
-        <div id="ui-overlay">
-            <h1>DeusXmakina</h1>
-            <div class="controls-hint">Observe the rise and fall of civilizations.</div>
+            <div id="chronicle-panel" class="side-panel right">
+                <h2>The Chronicle</h2>
+                <div id="event-log">
+                    <div class="event-item">Welcome, Watcher. The world begins to turn...</div>
+                </div>
+            </div>
+
+            <div id="intervention-menu" class="hidden">
+                <div class="menu-header">
+                    <h3 id="target-faction-name">Faction Name</h3>
+                    <p id="target-faction-desc">Race - Type</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="label">Military</span>
+                        <span id="stat-military" class="value">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Stability</span>
+                        <span id="stat-stability" class="value">0%</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Treasury</span>
+                        <span id="stat-treasury" class="value">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Tech</span>
+                        <span id="stat-tech" class="value">1.0</span>
+                    </div>
+                </div>
+                <div class="resources-row">
+                    <span>Food: <b id="res-food">0</b></span>
+                    <span>Materials: <b id="res-materials">0</b></span>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" data-action="support">Support (5 Pts)</button>
+                    <button class="action-btn" data-action="sabotage">Sabotage (8 Pts)</button>
+                    <button class="action-btn" data-action="grand">Ascend (25 Pts)</button>
+                </div>
+            </div>
         </div>
     </div>
     <script type="module" src="main.js"></script>
