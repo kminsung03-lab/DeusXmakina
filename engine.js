@@ -11,6 +11,19 @@ export const TERRAIN_TYPES = {
 export const FACTION_TYPES = ['Kingdom', 'Empire', 'Tribe'];
 export const RACES = ['Human', 'Elf', 'Orc', 'Dwarf', 'Nomad'];
 
+export class City {
+    constructor(id, name, ownerId, x, y) {
+        this.id = id;
+        this.name = name;
+        this.ownerId = ownerId;
+        this.x = x;
+        this.y = y;
+        this.level = 1; // 1: Village, 2: City, 3: Metropolis
+        this.population = 100;
+        this.tradeValue = 10;
+    }
+}
+
 export class Tile {
     constructor(x, y) {
         this.x = x;
@@ -18,7 +31,7 @@ export class Tile {
         this.terrain = TERRAIN_TYPES.WATER;
         this.continentId = null;
         this.ownerId = null;
-        this.cityId = null;
+        this.city = null; // Stores City object
         this.resources = { type: 'Food', amount: 0 };
     }
 }
@@ -37,6 +50,7 @@ export class Faction {
         this.stability = 100;
         this.territories = new Set();
         this.diplomacy = new Map(); // factionId -> { state: 'neutral|war|ally', trust: int }
+        this.tradeRoutes = []; // List of faction IDs traded with
         this.isAlive = true;
     }
 }

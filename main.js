@@ -15,6 +15,10 @@ class WorldRenderer {
         this.selectedFactionId = null;
         this.isGameRunning = false;
 
+        this.citySprites = new Map(); // tileKey -> Sprite
+        this.tradeLines = new THREE.Group();
+        this.scene.add(this.tradeLines);
+
         this.initCamera();
         this.initRenderer();
         this.initLights();
@@ -36,16 +40,20 @@ class WorldRenderer {
         const gameScreen = document.getElementById('game-screen');
         
         document.getElementById('btn-start').addEventListener('click', () => {
-            homeScreen.classList.add('hidden');
-            gameScreen.classList.remove('hidden');
-            this.isGameRunning = true;
-            this.addEvent("The Watcher has ascended. Time begins now.");
-            this.updateFactionList();
+            homeScreen.style.opacity = '0';
+            setTimeout(() => {
+                homeScreen.classList.add('hidden');
+                gameScreen.classList.remove('hidden');
+                this.isGameRunning = true;
+                this.addEvent("The Watcher has ascended. Time begins now.");
+                this.updateFactionList();
+            }, 1000);
         });
 
         document.getElementById('btn-home').addEventListener('click', () => {
             gameScreen.classList.add('hidden');
             homeScreen.classList.remove('hidden');
+            homeScreen.style.opacity = '1';
             this.isGameRunning = false;
         });
 
@@ -129,9 +137,81 @@ class WorldRenderer {
                 colors[i * 3] = color.r;
                 colors[i * 3 + 1] = color.g;
                 colors[i * 3 + 2] = color.b;
+
+                // Update Cities
+                this.updateCityVisual(tile, x, y);
             }
         }
         this.instancedMesh.geometry.attributes.color.needsUpdate = true;
+        this.updateTradeVisuals();
+    }
+
+    updateCityVisual(tile, x, y) {
+        const key = `${x},${y}`;
+        if (tile.city) {
+            if (!this.citySprites.has(key)) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 64; canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🏛️', 32, 48);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                const sprite = new THREE.Sprite(material);
+                sprite.position.set(x, 0.5, y);
+                this.scene.add(sprite);
+                this.citySprites.set(key, sprite);
+            }
+            const sprite = this.citySprites.get(key);
+            const scale = 1.0 + tile.city.level * 0.8;
+            sprite.scale.set(scale, scale, 1);
+        } else if (this.citySprites.has(key)) {
+            const sprite = this.citySprites.get(key);
+            this.scene.remove(sprite);
+            this.citySprites.delete(key);
+        }
+    }
+
+    updateTradeVisuals() {
+        this.tradeLines.clear();
+        const material = new THREE.LineBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.3 });
+        
+        this.sim.state.factions.forEach(f => {
+            if (!f.isAlive) return;
+            const originCity = Array.from(f.territories)
+                .map(key => {
+                    const [x, y] = key.split(',').map(Number);
+                    return this.sim.state.grid[x][y];
+                })
+                .find(t => t.city && t.city.level >= 2);
+
+            if (!originCity) return;
+
+            f.tradeRoutes.forEach(targetId => {
+                const target = this.sim.state.factions.find(fac => fac.id === targetId);
+                if (target && target.isAlive) {
+                    const targetCity = Array.from(target.territories)
+                        .map(key => {
+                            const [x, y] = key.split(',').map(Number);
+                            return this.sim.state.grid[x][y];
+                        })
+                        .find(t => t.city && t.city.level >= 2);
+
+                    if (targetCity) {
+                        const points = [
+                            new THREE.Vector3(originCity.x, 0.6, originCity.y),
+                            new THREE.Vector3(targetCity.x, 0.6, targetCity.y)
+                        ];
+                        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                        const line = new THREE.Line(geometry, material);
+                        this.tradeLines.add(line);
+                    }
+                }
+            });
+        });
     }
 
     updateFactionList() {
@@ -145,11 +225,12 @@ class WorldRenderer {
             item.innerHTML = `
                 <span class="name" style="color: #${f.color.getHexString()}">${f.name}</span>
                 <span class="details">${f.race} ${f.type} | Territory: ${f.territories.size}</span>
+                <span class="details">Trade Routes: ${f.tradeRoutes.length}</span>
             `;
             item.addEventListener('click', () => {
                 this.selectedFactionId = f.id;
                 this.updateFactionUI();
-                this.updateFactionList(); // Refresh for selection styling
+                this.updateFactionList();
             });
             list.appendChild(item);
         });

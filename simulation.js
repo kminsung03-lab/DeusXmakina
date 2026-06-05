@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WorldState, GRID_SIZE, TERRAIN_TYPES, FACTION_TYPES, RACES, Faction } from './engine.js';
+import { WorldState, GRID_SIZE, TERRAIN_TYPES, FACTION_TYPES, RACES, Faction, City } from './engine.js';
 
 export class SimulationManager {
     constructor() {
@@ -123,6 +123,12 @@ export class SimulationManager {
                 if (this.state.grid[rx][ry].continentId && !this.state.grid[rx][ry].ownerId) {
                     this.state.grid[rx][ry].ownerId = i;
                     faction.territories.add(`${rx},${ry}`);
+                    
+                    // Create Initial Capital City
+                    const city = new City(i * 100, `${faction.name} Prime`, i, rx, ry);
+                    city.level = 2; // Capital starts as a City
+                    this.state.grid[rx][ry].city = city;
+                    
                     placed = true;
                 }
                 attempts++;
@@ -133,11 +139,13 @@ export class SimulationManager {
 
     tick() {
         this.state.tickCount++;
-        this.state.player.influencePoints += 0.5; // Slightly slower influence gain
+        this.state.player.influencePoints += 0.5;
 
         this.state.factions.forEach(f => {
             if (!f.isAlive) return;
             this.updateResources(f);
+            this.updateCities(f);
+            this.updateTradeRoutes(f);
             this.processAI(f);
         });
 
@@ -152,14 +160,27 @@ export class SimulationManager {
         f.territories.forEach(key => {
             const [x, y] = key.split(',').map(Number);
             const tile = this.state.grid[x][y];
-            if (tile.resources.type === 'Food') incomeFood += tile.resources.amount * 0.2;
-            else if (tile.resources.type === 'Wood' || tile.resources.type === 'Metal') incomeMaterials += tile.resources.amount * 0.15;
-            else if (tile.resources.type === 'Gold') incomeGold += tile.resources.amount * 0.3;
+            
+            let multiplier = 1.0;
+            if (tile.city) multiplier = 1.0 + (tile.city.level * 0.5); // Cities boost production
+
+            if (tile.resources.type === 'Food') incomeFood += tile.resources.amount * 0.2 * multiplier;
+            else if (tile.resources.type === 'Wood' || tile.resources.type === 'Metal') incomeMaterials += tile.resources.amount * 0.15 * multiplier;
+            else if (tile.resources.type === 'Gold') incomeGold += tile.resources.amount * 0.3 * multiplier;
         });
 
         f.food += incomeFood - (f.military * 0.1);
         f.materials += incomeMaterials;
         f.treasury += incomeGold + (f.territories.size * 0.05);
+
+        // Trade Route Income
+        f.tradeRoutes.forEach(targetId => {
+            const target = this.state.factions.find(fac => fac.id === targetId);
+            if (target && target.isAlive) {
+                f.treasury += 2; // Flat bonus for now
+                f.stability += 0.1;
+            }
+        });
 
         if (f.food < 0) {
             f.food = 0;
@@ -167,11 +188,74 @@ export class SimulationManager {
             f.military -= 0.5;
         }
         
-        // Cap values
         f.stability = Math.min(100, Math.max(0, f.stability));
         if (f.stability <= 0 && f.territories.size > 0) {
             f.isAlive = false;
         }
+    }
+
+    updateCities(f) {
+        f.territories.forEach(key => {
+            const [x, y] = key.split(',').map(Number);
+            const tile = this.state.grid[x][y];
+            
+            if (tile.city) {
+                // City Growth
+                if (f.food > 100 && tile.city.population < tile.city.level * 1000) {
+                    tile.city.population += 5;
+                    f.food -= 1;
+                }
+                
+                // City Level Up
+                if (tile.city.level < 3 && f.materials > 500 && tile.city.population > 500 * tile.city.level) {
+                    tile.city.level++;
+                    f.materials -= 500;
+                    console.log(`${tile.city.name} evolved to level ${tile.city.level}!`);
+                }
+            } else if (f.territories.size > (f.tradeRoutes.length + 1) * 15 && f.materials > 200) {
+                // Build New City if territory is large enough
+                const rx = x, ry = y;
+                if (!this.state.grid[rx][ry].city) {
+                    const cityId = f.id * 100 + Math.floor(Math.random() * 100);
+                    const city = new City(cityId, `${f.name} Outpost`, f.id, rx, ry);
+                    this.state.grid[rx][ry].city = city;
+                    f.materials -= 200;
+                }
+            }
+        });
+    }
+
+    updateTradeRoutes(f) {
+        // Clear old trade routes if factions are dead
+        f.tradeRoutes = f.tradeRoutes.filter(id => {
+            const target = this.state.factions.find(fac => fac.id === id);
+            return target && target.isAlive;
+        });
+
+        if (f.tradeRoutes.length >= 3) return; // Cap trade routes
+
+        // Find potential neighbors
+        f.territories.forEach(key => {
+            const [tx, ty] = key.split(',').map(Number);
+            const neighbors = [[tx+1, ty], [tx-1, ty], [tx, ty+1], [tx, ty-1]];
+            
+            for (const [nx, ny] of neighbors) {
+                if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                    const targetTile = this.state.grid[nx][ny];
+                    if (targetTile.ownerId !== null && targetTile.ownerId !== f.id) {
+                        const targetId = targetTile.ownerId;
+                        const diplomacy = f.diplomacy.get(targetId);
+                        
+                        if (diplomacy && (diplomacy.state === 'neutral' || diplomacy.state === 'ally')) {
+                            if (!f.tradeRoutes.includes(targetId)) {
+                                f.tradeRoutes.push(targetId);
+                                console.log(`${f.name} established trade with ${this.state.factions[targetId].name}`);
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     processAI(f) {
@@ -256,13 +340,27 @@ export class SimulationManager {
 
     resolveConflict(attacker, defender, tile) {
         if (!defender) return;
+        
+        // Cities defend harder
+        let dPowerBonus = 1.0;
+        if (tile.city) dPowerBonus = 1.5 + (tile.city.level * 0.5);
+
         const aPower = attacker.military * (1 + attacker.techLevel * 0.1) * (0.7 + Math.random() * 0.6);
-        const dPower = defender.military * (1 + defender.techLevel * 0.1) * (1.2);
+        const dPower = defender.military * (1 + defender.techLevel * 0.1) * (1.2 * dPowerBonus);
         
         if (aPower > dPower) {
             defender.territories.delete(`${tile.x},${tile.y}`);
             attacker.territories.add(`${tile.x},${tile.y}`);
             tile.ownerId = attacker.id;
+            
+            // City Looting / Capture
+            if (tile.city) {
+                attacker.treasury += tile.city.population * 0.1;
+                tile.city.ownerId = attacker.id;
+                tile.city.population *= 0.5; // War casualties
+                tile.city.level = Math.max(1, tile.city.level - 1);
+            }
+
             attacker.military -= 2;
             defender.military -= 4;
             defender.stability -= 5;
