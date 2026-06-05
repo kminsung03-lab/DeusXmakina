@@ -10,13 +10,21 @@ class WorldRenderer {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x05070a);
         
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        this.selectedFactionId = null;
+
         this.initCamera();
         this.initRenderer();
         this.initLights();
         this.initControls();
         this.createGrid();
+        this.initUI();
         
         window.addEventListener('resize', () => this.onWindowResize());
+        window.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        window.addEventListener('click', () => this.onClick());
+        
         this.startLoop();
     }
 
@@ -27,7 +35,7 @@ class WorldRenderer {
     }
 
     initRenderer() {
-        this.renderer = new THREE.WebGLRenderer({ antialias: false }); // Optimization for 10k tiles
+        this.renderer = new THREE.WebGLRenderer({ antialias: false });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.container.appendChild(this.renderer.domElement);
     }
@@ -41,11 +49,10 @@ class WorldRenderer {
         this.controls.enableDamping = true;
         this.controls.screenSpacePanning = true;
         this.controls.minDistance = 50;
-        this.controls.maxDistance = 1000;
+        this.controls.maxDistance = 1500;
     }
 
     createGrid() {
-        // Using InstancedMesh for performance with 100x100 tiles
         const geometry = new THREE.PlaneGeometry(1, 1);
         const material = new THREE.MeshBasicMaterial({ vertexColors: true });
         this.instancedMesh = new THREE.InstancedMesh(geometry, material, GRID_SIZE * GRID_SIZE);
@@ -57,19 +64,14 @@ class WorldRenderer {
             for (let y = 0; y < GRID_SIZE; y++) {
                 const i = x * GRID_SIZE + y;
                 const tile = this.sim.state.grid[x][y];
-                
                 dummy.position.set(x, 0, y);
                 dummy.rotation.x = -Math.PI / 2;
                 dummy.updateMatrix();
                 this.instancedMesh.setMatrixAt(i, dummy.matrix);
-                
                 const color = new THREE.Color(tile.terrain.color);
-                colors[i * 3] = color.r;
-                colors[i * 3 + 1] = color.g;
-                colors[i * 3 + 2] = color.b;
+                colors[i * 3] = color.r; colors[i * 3 + 1] = color.g; colors[i * 3 + 2] = color.b;
             }
         }
-        
         this.instancedMesh.geometry.setAttribute('color', new THREE.InstancedBufferAttribute(colors, 3));
         this.scene.add(this.instancedMesh);
     }
@@ -80,25 +82,65 @@ class WorldRenderer {
             for (let y = 0; y < GRID_SIZE; y++) {
                 const i = x * GRID_SIZE + y;
                 const tile = this.sim.state.grid[x][y];
-                
-                let color;
-                if (tile.ownerId !== null) {
-                    color = this.sim.state.factions[tile.ownerId].color;
-                } else {
-                    color = new THREE.Color(tile.terrain.color);
-                }
-                
-                colors[i * 3] = color.r;
-                colors[i * 3 + 1] = color.g;
-                colors[i * 3 + 2] = color.b;
+                let color = (tile.ownerId !== null) ? this.sim.state.factions[tile.ownerId].color : new THREE.Color(tile.terrain.color);
+                colors[i * 3] = color.r; colors[i * 3 + 1] = color.g; colors[i * 3 + 2] = color.b;
             }
         }
         this.instancedMesh.geometry.attributes.color.needsUpdate = true;
     }
 
-    updateUI() {
-        document.getElementById('world-year').innerText = this.sim.state.tickCount;
-        document.getElementById('essence-points').innerText = this.sim.state.player.influencePoints;
+    initUI() {
+        const buttons = document.querySelectorAll('.action-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.target.getAttribute('data-action');
+                if (this.selectedFactionId !== null) {
+                    const result = this.sim.intervene(action, this.selectedFactionId);
+                    if (result === true) {
+                        this.addEvent(`Watcher intervened in ${this.sim.state.factions[this.selectedFactionId].name} with ${action}.`);
+                    } else if (typeof result === 'object') {
+                        alert(`Information: ${result.name} - Power: ${result.military.toFixed(1)}, Stability: ${result.stability}%`);
+                    } else {
+                        alert("Not enough points!");
+                    }
+                }
+            });
+        });
+    }
+
+    addEvent(text) {
+        const log = document.getElementById('event-log');
+        const item = document.createElement('div');
+        item.className = 'event-item';
+        item.innerText = `[Year ${this.sim.state.tickCount}] ${text}`;
+        log.appendChild(item);
+        if (log.children.length > 20) log.removeChild(log.firstChild);
+    }
+
+    onMouseMove(event) {
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.innerHeight / window.innerHeight) * 2 + 1;
+    }
+
+    onClick() {
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObject(this.instancedMesh);
+        if (intersects.length > 0) {
+            const instanceId = intersects[0].instanceId;
+            const x = Math.floor(instanceId / GRID_SIZE);
+            const y = instanceId % GRID_SIZE;
+            const tile = this.sim.state.grid[x][y];
+            
+            if (tile.ownerId !== null) {
+                this.selectedFactionId = tile.ownerId;
+                const faction = this.sim.state.factions[tile.ownerId];
+                document.getElementById('target-faction-name').innerText = `${faction.name} (${faction.race} ${faction.type})`;
+                document.getElementById('intervention-menu').classList.remove('hidden');
+            } else {
+                document.getElementById('intervention-menu').classList.add('hidden');
+                this.selectedFactionId = null;
+            }
+        }
     }
 
     startLoop() {
@@ -112,8 +154,9 @@ class WorldRenderer {
         setInterval(() => {
             this.sim.tick();
             this.updateGrid();
-            this.updateUI();
-        }, 1000); // 1 Tick per second
+            document.getElementById('world-year').innerText = this.sim.state.tickCount;
+            document.getElementById('essence-points').innerText = this.sim.state.player.influencePoints;
+        }, 1000);
     }
 
     onWindowResize() {
