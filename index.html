@@ -1,15 +1,27 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lotto Number Generator</title>
-  <link href='/style.css' rel='stylesheet'>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeusXmakina - Twin Continents</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
-  <h1>Lotto Number Generator</h1>
-  <button id="generateBtn">Generate Numbers</button>
-  <div id="lottoNumbers"></div>
-  <script defer type="text/javascript" src="/main.js"></script>
+    <div id="app">
+        <div id="map-container"></div>
+        <div id="ui-overlay">
+            <h1>The Twin Continents</h1>
+            <div class="controls-hint">Scroll to Zoom • Drag to Pan</div>
+        </div>
+    </div>
+    <script type="module" src="main.js"></script>
 </body>
 </html>

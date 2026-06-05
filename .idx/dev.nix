@@ -1,12 +1,32 @@
-# To learn more about how to use Nix to configure your environment
+ㅎ# To learn more about how to use Nix to configure your environment
 # see: https://developers.google.com/idx/guides/customize-idx-env
 { pkgs, ... }: {
   # Which nixpkgs channel to use.
   channel = "stable-24.11"; # or "unstable"
   # Use https://search.nixos.org/packages to find packages
   packages = [
+    pkgs.gh
     pkgs.nodejs_22
     pkgs.python3
+    pkgs.glib
+    pkgs.nss
+    pkgs.nspr
+    pkgs.atk
+    pkgs.at-spi2-atk
+    pkgs.libdrm
+    pkgs.mesa
+    pkgs.libX11
+    pkgs.libXcomposite
+    pkgs.libXdamage
+    pkgs.libXext
+    pkgs.libXfixes
+    pkgs.libXrandr
+    pkgs.gbm
+    pkgs.alsa-lib
+    pkgs.pango
+    pkgs.cairo
+    pkgs.expat
+    pkgs.libxcb
   ];
   # Sets environment variables in the workspace
   env = {};
