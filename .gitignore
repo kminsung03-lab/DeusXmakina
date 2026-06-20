@@ -1,0 +1,18 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Obsidian personal workspace state
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Temporary files
+99_임시/*
+!99_임시/README.md
+*.tmp
+*.bak
+
+# Optional large exports
+**/assets/exports/*.zip
+**/assets/exports/*.mp4
